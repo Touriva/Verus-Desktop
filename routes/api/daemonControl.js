@@ -9,6 +9,7 @@ const execFile = require('child_process').execFile;
 const Promise = require('bluebird');
 const md5 = require('agama-wallet-lib/src/crypto/md5');
 const { generateRpcPassword } = require('./utils/auth/rpcAuth.js');
+const { createFetchBoostrapWindow } = require('../children/fetch-bootstrap/window.js');
 
 module.exports = (api) => {
   api.isPbaasDaemon = (daemon, coin) => {
@@ -193,8 +194,10 @@ module.exports = (api) => {
                   api.writeRpcPort(coin, confFile, fallbackPort),
                   api.writeRpcPassword(confFile),
                   api.writeRpcUser(confFile),
-                  api.WriteAddNode('185.25.48.72', confFile, '19424'),
-                  api.WriteAddNode('185.64.105.111', confFile, '19424')
+                  api.WriteAddNode('168.119.27.242', confFile, '18183'),
+                  api.WriteAddNode('5.9.224.250', confFile, '18183'),
+                  api.WriteAddNode('95.216.104.210', confFile, '18183'),
+                  api.WriteAddNode('135.181.68.2', confFile, '18183')
                 ]);
               } else {
                 return Promise.all([
@@ -225,7 +228,7 @@ module.exports = (api) => {
       fs.access(coinDir, fs.R_OK | fs.W_OK)
         .then(() => {
           api.log(`located ${coinDir}`, "native.debug");
-          resolve()
+          resolve(true)
         })
         .catch(e => {
           if (e.code !== 'ENOENT') throw e
@@ -241,7 +244,7 @@ module.exports = (api) => {
               "native.process"
             );
   
-            resolve()
+            resolve(false)
           })
           .catch(e => reject(e))
         })
@@ -430,9 +433,9 @@ module.exports = (api) => {
 
         acOptions.push(`-datadir=${api.appConfig.coin.native.dataDir[coin]}`)
       } else {
-        if (global.USB_MODE) {
-          acOptions.push(`-datadir=${api.paths[`${coin.toLowerCase()}Dir`]}`)
-        }
+        // if (global.USB_MODE) {
+        //   acOptions.push(`-datadir=${api.paths[`${coin.toLowerCase()}Dir`]}`)
+        // }
 
         // Set coin data directory into memory if it doesnt exist yet
         if (api.paths[`${coinLc}Dir`] == null) {
@@ -452,7 +455,11 @@ module.exports = (api) => {
       api.log(`selected data: ${JSON.stringify(acOptions, null, '\t')}`, 'native.confd');
 
       api.initCoinDir(coinLc)
-      .then(() => {
+      .then(async existed => {
+        if (!existed && coin === 'VRSC') {
+          await createFetchBoostrapWindow(coin, api.appConfig)
+        }
+
         return Promise.all([api.initLogfile(coin), api.initConffile(coin, confName, fallbackPort)])
       })
       .then(() => {
